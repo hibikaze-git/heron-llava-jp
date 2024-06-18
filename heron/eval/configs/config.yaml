@@ -6,7 +6,7 @@ wandb:
   launch: false
 
 # basic information
-testmode: True
+testmode: false
 torch_dtype: "fp16" # {fp16, bf16, fp32}
 # if you don't use api, please set "api" as "false"
 # if you use api, please select from "openai", "anthoropic", "google", "cohere", "mistral", "amazon_bedrock"
