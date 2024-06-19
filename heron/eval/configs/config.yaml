@@ -1,13 +1,13 @@
 wandb:
   log: True
-  entity: "morikoromori"
+  entity: "weblab-geniac4"
   project: "heron-leaderboard"
-  run_name: 'SakanaAI/EvoVLM-JP-v1-7B_test'
+  run_name: 'team-hatakeyama-phase2/Tanuki-8B-vision-v0-siglip-so400m-patch14-384'
   launch: false
 
 # basic information
 testmode: false
-torch_dtype: "fp16" # {fp16, bf16, fp32}
+torch_dtype: "bf16" # {fp16, bf16, fp32}
 # if you don't use api, please set "api" as "false"
 # if you use api, please select from "openai", "anthoropic", "google", "cohere", "mistral", "amazon_bedrock"
 api: false
@@ -16,9 +16,9 @@ processor_artifact: null
 tokenizer_artifact: null
 
 model:
-  _target_: transformers.AutoModelForVision2Seq.from_pretrained
-  pretrained_model_name_or_path: 'SakanaAI/EvoVLM-JP-v1-7B'
-  torch_dtype: "float16"
+  _target_: transformers.LlavaLlamaForCausalLM.from_pretrained
+  pretrained_model_name_or_path: 'team-hatakeyama-phase2/Tanuki-8B-vision-v0-siglip-so400m-patch14-384'
+  torch_dtype: "bfloat16"
   ignore_mismatched_sizes: true
 
 processor:
