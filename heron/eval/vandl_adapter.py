@@ -15,7 +15,7 @@ from transformers import LlamaTokenizer, AutoTokenizer, AutoProcessor
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, StoppingCriteria
 from transformers import AutoTokenizer, AutoModelForVision2Seq, AutoImageProcessor
-from llava.model.llava_llama import LlavaLlamaForCausalLM
+from LLaVA-JP.llava.llava_llama import LlavaLlamaForCausalLM #for LlavaJP
 
 from datasets import load_dataset
 
@@ -44,6 +44,7 @@ LLAVA_LIST = [
     'liuhaotian/llava-v1.5-7b-lora',
     'liuhaotian/llava-v1.5-13b-lora',
 ]
+#for LlavaJP
 LLAVAJP_LIST = [
     'team-hatakeyama-phase2/Tanuki-8B-vision-v0-siglip-so400m-patch14-384',
 ]
