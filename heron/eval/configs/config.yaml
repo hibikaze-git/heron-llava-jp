@@ -1,6 +1,6 @@
 wandb:
   log: True
-  entity: "weblab-geniac4"
+  entity: "morikoromori"
   project: "heron-leaderboard"
   run_name: 'team-hatakeyama-phase2/Tanuki-8B-vision-v0-siglip-so400m-patch14-384'
   launch: false
@@ -16,7 +16,7 @@ processor_artifact: null
 tokenizer_artifact: null
 
 model:
-  _target_: transformers.LlavaLlamaForCausalLM.from_pretrained
+  _target_: llava.model.llava_llama.LlavaLlamaForCausalLM.from_pretrained
   pretrained_model_name_or_path: 'team-hatakeyama-phase2/Tanuki-8B-vision-v0-siglip-so400m-patch14-384'
   torch_dtype: "bfloat16"
   ignore_mismatched_sizes: true
