@@ -15,7 +15,7 @@ from transformers import LlamaTokenizer, AutoTokenizer, AutoProcessor
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, StoppingCriteria
 from transformers import AutoTokenizer, AutoModelForVision2Seq, AutoImageProcessor
-from LLaVA-JP.llava.llava_llama import LlavaLlamaForCausalLM #for LlavaJP
+from llavajp.llava.llava_llama import LlavaLlamaForCausalLM #for LlavaJP
 
 from datasets import load_dataset
 
