@@ -419,7 +419,7 @@ class LLaVAJPResponseGenerator:
         self.model_path = model_path
         self.model_name = get_model_name_from_path(model_path)
         self.tokenizer, self.model, self.image_processor, self.context_len = load_pretrained_model(
-            self.model_path, None, self.model_name
+            self.model_path, None, self.model_name, , device_map="cuda" if torch.cuda.is_available() else "cpu"
         )
         
         self.device = device
