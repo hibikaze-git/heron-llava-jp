@@ -15,7 +15,14 @@ from transformers import LlamaTokenizer, AutoTokenizer, AutoProcessor
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, StoppingCriteria
 from transformers import AutoTokenizer, AutoModelForVision2Seq, AutoImageProcessor
+
+import sys #for LlavaJP
+sys.path.append('/content/LLaVA-JP')  # LLaVA-JPリポジトリの絶対パスを指定
+from llavajp.model.llava_llama import LlavaLlamaForCausalLM #for LlavaJP
+# sys.path.remove('/content/LLaVA-JP')　# LLaVA-JPリポジトリの絶対パスを戻す
+
 from datasets import load_dataset
+
 
 import requests
 from PIL import Image
@@ -41,6 +48,9 @@ LLAVA_LIST = [
     'liuhaotian/llava-v1.5-13b',
     'liuhaotian/llava-v1.5-7b-lora',
     'liuhaotian/llava-v1.5-13b-lora',
+]
+LLAVAJP_LIST = [
+    'team-hatakeyama-phase2/Tanuki-8B-vision-v0-siglip-so400m-patch14-384',
 ]
 EvoVLM = [
     'SakanaAI/EvoVLM-JP-v1-7B',
@@ -380,6 +390,92 @@ class LLaVAResponseGenerator:
         res = self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)
         return res[0]
 
+# for LLaVAJP
+import os
+import torch
+import re
+from PIL import Image
+from config_singleton import WandbConfigSingleton
+from llava.constants import (
+    IMAGE_TOKEN_INDEX,
+    DEFAULT_IMAGE_TOKEN,
+    DEFAULT_IM_START_TOKEN,
+    DEFAULT_IM_END_TOKEN,
+    IMAGE_PLACEHOLDER,
+    )
+from llava.conversation import conv_templates, SeparatorStyle
+from llava.model.builder import load_pretrained_model
+from llava.mm_utils import (
+    process_images,
+    tokenizer_image_token,
+    get_model_name_from_path,
+    )
+
+# for LLaVAJP
+class LLaVAJPResponseGenerator:
+    def __init__(self, model_path, device):
+        self.cfg = WandbConfigSingleton.get_instance().config
+        
+        self.model_path = model_path
+        self.model_name = get_model_name_from_path(model_path)
+        self.tokenizer, self.model, self.image_processor, self.context_len = load_pretrained_model(
+            self.model_path, None, self.model_name
+        )
+        
+        self.device = device
+        self.model.eval()
+        self.model.to(self.device)
+
+    def generate_response(self, question, image_path):
+        image = Image.open(image_path)
+        
+        # prepare inputs
+        qs = question
+        image_token_se = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN
+        if IMAGE_PLACEHOLDER in qs:
+            if self.model.config.mm_use_im_start_end:
+                qs = re.sub(IMAGE_PLACEHOLDER, image_token_se, qs)
+            else:
+                qs = re.sub(IMAGE_PLACEHOLDER, DEFAULT_IMAGE_TOKEN, qs)
+        else:
+            if self.model.config.mm_use_im_start_end:
+                qs = image_token_se + "\n" + qs
+            else:
+                qs = DEFAULT_IMAGE_TOKEN + "\n" + qs
+        
+        conv = conv_templates["vicuna_v1"].copy()
+        conv.append_message(conv.roles[0], qs)
+        conv.append_message(conv.roles[1], None)
+        prompt = conv.get_prompt()
+        
+        images = [image]
+        
+        image_sizes = [x.size for x in images]
+        images_tensor = process_images(
+            images,
+            self.image_processor,
+            self.model.config
+        ).to(self.model.device, dtype=torch.float16)
+        
+        input_ids = (
+            tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt")
+            .unsqueeze(0)
+            .cuda()
+        )
+        
+        with torch.inference_mode():
+            output_ids = self.model.generate(
+                input_ids,
+                images=images_tensor,
+                image_sizes=image_sizes,
+                max_new_tokens=self.cfg.generation.args.max_length,
+                do_sample=self.cfg.generation.args.do_sample,
+                temperature=self.cfg.generation.args.temperature,
+                use_cache=True,
+                no_repeat_ngram_size=self.cfg.generation.args.no_repeat_ngram_size,
+            )
+        res = self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)
+        return res[0]
 
 # for Claude-3
 import os
@@ -703,6 +799,13 @@ def get_adapter():
 
         return generator
 
+    elif cfg.model.pretrained_model_name_or_path in LLAVAJP_LIST:
+        device_id = 0
+        device = f"cuda:{device_id}"
+        generator = LLaVAJPResponseGenerator(cfg.model.pretrained_model_name_or_path, device)
+
+        return generator
+        
     elif cfg.model.pretrained_model_name_or_path in EvoVLM:
         device_id = 0
         device = f"cuda:{device_id}"
