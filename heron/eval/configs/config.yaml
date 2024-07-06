@@ -1,6 +1,6 @@
 wandb:
   log: True
-  entity: "morikoromori"
+  entity: "your-entity-name"
   project: "heron-leaderboard"
   run_name: 'team-hatakeyama-phase2/Tanuki-8B-vision-v0-siglip-so400m-patch14-384'
   launch: false
