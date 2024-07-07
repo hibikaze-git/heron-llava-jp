@@ -402,8 +402,8 @@ class LLaVAJPResponseGenerator:
     def __init__(self, model_path, device):
         self.cfg = WandbConfigSingleton.get_instance().config
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.torch_dtype = torch.bfloat16 if self.device == "cuda" else torch.float32
+        self.device = device
+        self.torch_dtype = torch.bfloat16 if "cuda" in self.device else torch.float32
 
         self.model = LlavaLlamaForCausalLM.from_pretrained(
             model_path,
@@ -412,6 +412,7 @@ class LLaVAJPResponseGenerator:
             torch_dtype=self.torch_dtype,
             device_map=self.device,
         )
+
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_path,
             model_max_length=8192,
@@ -423,6 +424,7 @@ class LLaVAJPResponseGenerator:
 
         self.conv_mode = "v1"
 
+    @torch.inference_mode()
     def generate_response(self, question, image_path):
         image = Image.open(image_path).convert("RGB")
 
@@ -432,7 +434,7 @@ class LLaVAJPResponseGenerator:
                 "height"
             ] * len(self.model.get_model().vision_tower.scales)
 
-        if self.device == "cuda":
+        if "cuda" in self.device:
             image_tensor = (
                 self.model.get_model()
                 .vision_tower.image_processor(
@@ -465,33 +467,32 @@ class LLaVAJPResponseGenerator:
         input_ids = tokenizer_image_token(
             prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt"
         ).unsqueeze(0)
-        if self.device == "cuda":
+        if "cuda" in self.device:
             input_ids = input_ids.to(self.device)
 
         input_ids = input_ids[:, :-1]  # </sep>がinputの最後に入るので削除する
 
-        with torch.inference_mode():
-            output_ids = self.model.generate(
-                inputs=input_ids,
-                images=image_tensor,
-                max_new_tokens=self.cfg.generation.args.max_length,
-                do_sample=self.cfg.generation.args.do_sample,
-                temperature=self.cfg.generation.args.temperature,
-                use_cache=False,
-                top_p=self.cfg.generation.args.top_p,
-                repetition_penalty=1.,
-                no_repeat_ngram_size=self.cfg.generation.args.no_repeat_ngram_size,
-            )
+        output_ids = self.model.generate(
+            inputs=input_ids,
+            images=image_tensor,
+            max_new_tokens=self.cfg.generation.args.max_length,
+            do_sample=self.cfg.generation.args.do_sample,
+            temperature=self.cfg.generation.args.temperature,
+            use_cache=False,
+            top_p=self.cfg.generation.args.top_p,
+            repetition_penalty=1.,
+            no_repeat_ngram_size=self.cfg.generation.args.no_repeat_ngram_size,
+        )
 
-            output_ids = [
-                token_id for token_id in output_ids.tolist()[0] if token_id != IMAGE_TOKEN_INDEX
-            ]
+        output_ids = [
+            token_id for token_id in output_ids.tolist()[0] if token_id != IMAGE_TOKEN_INDEX
+        ]
 
-            output = self.tokenizer.decode(output_ids, skip_special_tokens=True)
+        output = self.tokenizer.decode(output_ids, skip_special_tokens=True)
 
-            target = "システム: "
-            idx = output.find(target)
-            output = output[idx + len(target) :]
+        target = "システム: "
+        idx = output.find(target)
+        output = output[idx + len(target) :]
 
         return output
 
